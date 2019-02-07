@@ -19,7 +19,7 @@ shows a real world example.
 
 1. It includes a core override for the file which contains this line of code:
 
-        <?php patchwork__patch_file('/CRM/Mailing/Mailstore.php');
+        <?php patchwork__patch_file('/CRM/Mailing/MailStore.php');
 
 2. It implements `hook_patchwork_patch_file($override, &$code)` to change the
    code of that file.
@@ -70,8 +70,8 @@ it's just a helper.
 
 ## Requirements
 
-* PHP v5.4+
-* CiviCRM (*FIXME: Version number*)
+* PHP v7.0+
+* CiviCRM 5.9.1
 
 ## Installation (Web UI)
 
