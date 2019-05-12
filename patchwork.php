@@ -27,9 +27,7 @@ function patchwork_civicrm_xmlMenu(&$files) {
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_install
  */
 function patchwork_civicrm_install() {
-  // Need to create patches dir.
-  $patches_dir = Civi::paths()->getPath('[civicrm.files]/patchwork/');
-  CRM_Utils_File::createDir($patches_dir);
+  patchwork__prepareDir();
   _patchwork_civix_civicrm_install();
 }
 
@@ -141,13 +139,72 @@ function patchwork_civicrm_entityTypes(&$entityTypes) {
 
 
 /**
+ * Implementation of hook_civicrm_check
+ *
+ * Add a check to the status page/System.check results if $snafu is TRUE.
+ */
+function patchwork_civicrm_check(&$messages) {
+
+  // Check the patchwork dir exists and is writeable.
+  $patches_dir = Civi::paths()->getPath('[civicrm.files]/patchwork/');
+  if (patchwork__prepareDir() === FALSE) {
+    $messages[] = new CRM_Utils_Check_Message(
+      'patchwork_missing_patch_dir',
+      ts('The directory at %1 is missing and attempting to create it failed.', [1 => $patches_dir]),
+      ts('Patchwork patches dir missing'),
+      \Psr\Log\LogLevel::ERROR,
+      'fa-flag'
+    );
+    return;
+  }
+  if (!is_writeable($patches_dir)) {
+    $messages[] = new CRM_Utils_Check_Message(
+      'patchwork_patch_dir_unwriteable',
+      ts('The directory at %1 is not writeable', [1 => $patches_dir]),
+      ts('Patchwork patches dir must be writeable.'),
+      \Psr\Log\LogLevel::ERROR,
+      'fa-flag'
+    );
+  }
+  // Now check all the files within it are writeable.
+  $dir = new DirectoryIterator($patches_dir);
+	$errors = [];
+	foreach ($dir as $fileinfo) {
+		if (!$fileinfo->isDot()) {
+      if (!is_writeable($patches_dir . '/' . $fileinfo->getFilename())) {
+        $errors[] = $fileinfo->getFilename();
+      }
+		}
+	}
+  if ($errors) {
+    $messages[] = new CRM_Utils_Check_Message(
+      'patchwork_patch_unwriteable_files',
+      ts('The files %1 are not writeable in %2', [2 => $patches_dir, 1 => implode(' ', $errors)]),
+      ts('Patchwork patched files are not writeable.'),
+      \Psr\Log\LogLevel::ERROR,
+      'fa-flag'
+    );
+  }
+}
+
+/**
  * Include a patched file, creating it if needed.
+ *
+ * This is called by the core override files which must be created in
+ * implementing extensions - see README.md
  *
  * @param string $override A path relative to the root dir of civicrm. e.g. /CRM/Core/Activity/BAO/Activity.php
  */
 function patchwork__patch_file($override) {
 
   $paths = Civi::paths();
+  // paranoia: check the override for anything unexpected. If there is a case
+  // for anything that doesn't match this regex, please submit an issue/PR.
+  if (!preg_match('@^[/a-zA-Z0-9_-]+\.php$@', $override)) {
+    Civi::log()->critical("patchwork: patchwork__patch_file called with dodgy looking override file. Refusing to touch it.", ['override' => $override]);
+    return;
+  }
+
   $original_file = $paths->getPath("[civicrm.root]$override");
 
   $patched_version = $paths->getPath(
@@ -163,7 +220,8 @@ function patchwork__patch_file($override) {
   $file_to_include = $original_file;
 
   if ($create_patch) {
-    // @todo.
+    Civi::log()->info("patchwork: identified need to (re)patch $override");
+
     $code = file_get_contents($original_file);
     if ($code) {
       $dummy = NULL;
@@ -174,14 +232,26 @@ function patchwork__patch_file($override) {
           'patchwork_apply_patch');
 
         // Save the patched code and if that worked, we'll include that file.
-        if ($code && file_put_contents($patched_version, $code)) {
-          $file_to_include = $patched_version;
-        }
+        if ($code) {
+          patchwork__prepareDir();
+          // Prepend a comment to the code.
+          $code = "<?php /** patchwork-patched version of $override */ ?>$code";
 
+          if (file_put_contents($patched_version, $code)) {
+            $file_to_include = $patched_version;
+            Civi::log()->info("patchwork: successfully (re)patched $override");
+          }
+          else {
+            Civi::log()->error("patchwork: Failed patching $override while writing file. Attempted to write to: $patched_version");
+          }
+        }
+        else {
+          Civi::log()->warning("patchwork: Patching $override resulted in no code?! Using original.");
+        }
       }
       catch (Exception $e) {
         // Something failed.
-        Civi::log()->error("Failed patching $override.", ['exception' => $e->getMessage() . $e->getTraceAsString()]);
+        Civi::log()->error("patchwork: Failed patching $override.", ['exception' => $e->getMessage() . $e->getTraceAsString()]);
       }
     }
   }
@@ -192,3 +262,9 @@ function patchwork__patch_file($override) {
   include $file_to_include;
 }
 
+function patchwork__prepareDir() {
+  // Need to create patches dir.
+  // Attempt, but don't abort (i.e. throw exception) if it fails.
+  $patches_dir = Civi::paths()->getPath('[civicrm.files]/patchwork/');
+  return CRM_Utils_File::createDir($patches_dir, FALSE);
+}
