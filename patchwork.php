@@ -220,7 +220,7 @@ function patchwork__patch_file($override) {
   $file_to_include = $original_file;
 
   if ($create_patch) {
-    Civi::log()->info("patchwork: identified need to (re)patch $override");
+    Civi::log()->info("patchwork: identified need to (re)patch $override", []);
 
     $code = file_get_contents($original_file);
     if ($code) {
@@ -239,14 +239,14 @@ function patchwork__patch_file($override) {
 
           if (file_put_contents($patched_version, $code)) {
             $file_to_include = $patched_version;
-            Civi::log()->info("patchwork: successfully (re)patched $override");
+            Civi::log()->info("patchwork: successfully (re)patched $override", []);
           }
           else {
-            Civi::log()->error("patchwork: Failed patching $override while writing file. Attempted to write to: $patched_version");
+            Civi::log()->error("patchwork: Failed patching $override while writing file. Attempted to write to: $patched_version", []);
           }
         }
         else {
-          Civi::log()->warning("patchwork: Patching $override resulted in no code?! Using original.");
+          Civi::log()->warning("patchwork: Patching $override resulted in no code?! Using original.", []);
         }
       }
       catch (Exception $e) {
