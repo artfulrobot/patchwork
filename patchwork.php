@@ -91,25 +91,9 @@ function patchwork_civicrm_managed(&$entities) {
 }
 
 /**
- * Implements hook_civicrm_caseTypes().
- *
- * Generate a list of case-types.
- *
- * Note: This hook only runs in CiviCRM 4.4+.
- *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_caseTypes
- */
-function patchwork_civicrm_caseTypes(&$caseTypes) {
-  _patchwork_civix_civicrm_caseTypes($caseTypes);
-}
-
-/**
  * Implements hook_civicrm_angularModules().
  *
  * Generate a list of Angular modules.
- *
- * Note: This hook only runs in CiviCRM 4.5+. It may
- * use features only available in v4.6+.
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_angularModules
  */
@@ -137,14 +121,12 @@ function patchwork_civicrm_entityTypes(&$entityTypes) {
   _patchwork_civix_civicrm_entityTypes($entityTypes);
 }
 
-
 /**
  * Implementation of hook_civicrm_check
  *
  * Add a check to the status page/System.check results if $snafu is TRUE.
  */
 function patchwork_civicrm_check(&$messages) {
-
   // Check the patchwork dir exists and is writeable.
   $patches_dir = Civi::paths()->getPath('[civicrm.files]/patchwork/');
   if (patchwork__prepareDir() === FALSE) {
@@ -168,14 +150,14 @@ function patchwork_civicrm_check(&$messages) {
   }
   // Now check all the files within it are writeable.
   $dir = new DirectoryIterator($patches_dir);
-	$errors = [];
-	foreach ($dir as $fileinfo) {
-		if (!$fileinfo->isDot()) {
+  $errors = [];
+  foreach ($dir as $fileinfo) {
+    if (!$fileinfo->isDot()) {
       if (!is_writeable($patches_dir . '/' . $fileinfo->getFilename())) {
         $errors[] = $fileinfo->getFilename();
       }
-		}
-	}
+    }
+  }
   if ($errors) {
     $messages[] = new CRM_Utils_Check_Message(
       'patchwork_patch_unwriteable_files',
@@ -227,8 +209,8 @@ function patchwork__patch_file($override) {
       $dummy = NULL;
       try {
         CRM_Utils_Hook::singleton()->invoke(
-          2, $override, $code,
-          $success, $dummy, $dummy, $dummy,
+          ['override', 'code'], $override, $code,
+          $dummy, $dummy, $dummy, $dummy,
           'patchwork_apply_patch');
 
         // Save the patched code and if that worked, we'll include that file.
