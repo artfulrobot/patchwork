@@ -195,8 +195,14 @@ function patchwork__patch_file($override) {
     . '.php');
 
   // Do we need to (re)create the patched file?
-  $create_patch = (!file_exists($patched_version)
-    || (filemtime($original_file) > filemtime($patched_version)));
+  $create_patch = (
+    // No file, we need to create
+    !file_exists($patched_version)
+    // Original core file has been updated, regenerate patch
+    || (filemtime($original_file) > filemtime($patched_version))
+    // Caches have been cleared. Regenerate patches
+    || (filemtime(\Civi::paths()->getPath("[civicrm.compile]/.")) > filemtime($patched_version))
+  );
 
   // Default action is to include original file.
   $file_to_include = $original_file;
