@@ -61,7 +61,7 @@ The easiest way is to delete the patched file in question.
   a patch for that core file. This can be useful in **extension Upgrader
   classes** for example, to ensure your new patch logic is applied.
 
-- Progammatically: call `\Civi\Patchwork::deletePatches()` which will delete
+- Progammatically: call `\Civi\Patchwork::singleton()->deletePatches()` which will delete
   *all* patches. This could feasibly be useful if you were worried about old
   patch files kicking around; say a patched version of something that a
   now-deleted/disabled extension created.
