@@ -2,6 +2,7 @@
 
 require_once 'patchwork.civix.php';
 use CRM_Patchwork_ExtensionUtil as E;
+use Civi\Patchwork\Worker as Patchwork;
 
 /**
  * Implements hook_civicrm_config().
@@ -27,7 +28,12 @@ function patchwork_civicrm_xmlMenu(&$files) {
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_install
  */
 function patchwork_civicrm_install() {
-  patchwork__prepareDir();
+  try {
+    \Civi\Patchwork\Worker::preparePatchworkDir();
+  }
+  catch (Civi\Patchwork\PatchingFailedException $e) {
+    Civi::log()->critical('While installing patchwork extension: ' . $e->getMessage() . ' Extension will not do anything until permissions are fixed.');
+  }
   _patchwork_civix_civicrm_install();
 }
 
@@ -128,11 +134,13 @@ function patchwork_civicrm_entityTypes(&$entityTypes) {
  */
 function patchwork_civicrm_check(&$messages) {
   // Check the patchwork dir exists and is writeable.
-  $patches_dir = Civi::paths()->getPath('[civicrm.files]/patchwork/');
-  if (patchwork__prepareDir() === FALSE) {
+  try {
+    $patches_dir = Patchwork::preparePatchworkDir();
+  }
+  catch (Civi\Patchwork\PatchingFailedException $e) {
     $messages[] = new CRM_Utils_Check_Message(
       'patchwork_missing_patch_dir',
-      ts('The directory at %1 is missing and attempting to create it failed.', [1 => $patches_dir]),
+      ts('The directory at %1 is missing and attempting to create it failed.', [1 => Patchwork::getPatchworkDir()]),
       ts('Patchwork patches dir missing'),
       \Psr\Log\LogLevel::ERROR,
       'fa-flag'
@@ -178,75 +186,6 @@ function patchwork_civicrm_check(&$messages) {
  * @param string $override A path relative to the root dir of civicrm. e.g. /CRM/Core/Activity/BAO/Activity.php
  */
 function patchwork__patch_file($override) {
-
-  $paths = Civi::paths();
-  // paranoia: check the override for anything unexpected. If there is a case
-  // for anything that doesn't match this regex, please submit an issue/PR.
-  if (!preg_match('@^[/a-zA-Z0-9_-]+\.php$@', $override)) {
-    Civi::log()->critical("patchwork: patchwork__patch_file called with dodgy looking override file. Refusing to touch it.", ['override' => $override]);
-    return;
-  }
-
-  $original_file = $paths->getPath("[civicrm.root]$override");
-
-  $patched_version = $paths->getPath(
-    '[civicrm.files]/patchwork/'
-    . sha1($override . CIVICRM_SITE_KEY)
-    . '.php');
-
-  // Do we need to (re)create the patched file?
-  $create_patch = (!file_exists($patched_version)
-    || (filemtime($original_file) > filemtime($patched_version)));
-
-  // Default action is to include original file.
-  $file_to_include = $original_file;
-
-  if ($create_patch) {
-    Civi::log()->info("patchwork: identified need to (re)patch $override", []);
-
-    $code = file_get_contents($original_file);
-    if ($code) {
-      $dummy = NULL;
-      try {
-        CRM_Utils_Hook::singleton()->invoke(
-          ['override', 'code'], $override, $code,
-          $dummy, $dummy, $dummy, $dummy,
-          'patchwork_apply_patch');
-
-        // Save the patched code and if that worked, we'll include that file.
-        if ($code) {
-          patchwork__prepareDir();
-          // Prepend a comment to the code.
-          $code = "<?php /** patchwork-patched version of $override */ ?>$code";
-
-          if (file_put_contents($patched_version, $code)) {
-            $file_to_include = $patched_version;
-            Civi::log()->info("patchwork: successfully (re)patched $override", []);
-          }
-          else {
-            Civi::log()->error("patchwork: Failed patching $override while writing file. Attempted to write to: $patched_version", []);
-          }
-        }
-        else {
-          Civi::log()->warning("patchwork: Patching $override resulted in no code?! Using original.", []);
-        }
-      }
-      catch (Exception $e) {
-        // Something failed.
-        Civi::log()->error("patchwork: Failed patching $override.", ['exception' => $e->getMessage() . $e->getTraceAsString()]);
-      }
-    }
-  }
-  else {
-    // The file is already up-to-date.
-    $file_to_include = $patched_version;
-  }
-  include $file_to_include;
+  Civi\Patchwork\Worker::doInclude($override);
 }
 
-function patchwork__prepareDir() {
-  // Need to create patches dir.
-  // Attempt, but don't abort (i.e. throw exception) if it fails.
-  $patches_dir = Civi::paths()->getPath('[civicrm.files]/patchwork/');
-  return CRM_Utils_File::createDir($patches_dir, FALSE);
-}

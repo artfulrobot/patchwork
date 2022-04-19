@@ -13,8 +13,7 @@ solves) these problems.
 
 ## How to use it
 
-The [mailstorepermissions
-extension](https://github.com/artfulrobot/mailstorepermissions)
+The [mailstorepermissions extension](https://github.com/artfulrobot/mailstorepermissions)
 shows a real world example.
 
 1. It includes a core override for the file which contains this line of code:
