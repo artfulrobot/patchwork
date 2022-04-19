@@ -120,6 +120,16 @@ git clone https://github.com/artfulrobot/patchworkdemo.git
 cv en patchworkdemo
 ```
 
-### License
+## License
 
 The extension is licensed under [AGPL-3.0](LICENSE.txt).
+
+## Change log
+
+### 1.3
+
+- Big refactor
+
+- Add phpunit tests (including patchworktest extension). Note: patchworktest extension should **never** be installed on a site. It's just for use by phpunit.
+
+- Add programmatic ways to delete patched files, e.g. useful if your extension has updated the patch it applies  (see "How do I manually recreate my patched files" above)

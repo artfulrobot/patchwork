@@ -53,8 +53,8 @@ class Worker {
     $paths = Civi::paths();
     $this->corePath = $corePath;
     $this->originalPath = $paths->getPath("[civicrm.root]$corePath");
-    if (!file_exists($this->originalFilePath)) {
-      throw new CannotIncludeException("Can not patch non-existant file '{$this->originalFilePath}'");
+    if (!file_exists($this->originalPath)) {
+      throw new CannotIncludeException("Can not patch non-existant file '{$this->originalPath}'");
     }
 
     if (!defined('CIVICRM_SITE_KEY')) {
@@ -65,10 +65,7 @@ class Worker {
     }
 
     // Otherwise, looks ok, store the patchedPath now.
-    $this->patchedPath = $paths->getPath(
-      '[civicrm.files]/patchwork/'
-      . sha1($corePath . CIVICRM_SITE_KEY)
-      . '.php');
+    $this->patchedPath = $paths->getPath('[civicrm.files]/patchwork/' . Patchwork::singleton()->getHashedFilename($corePath));
   }
 
   /**
@@ -108,7 +105,7 @@ class Worker {
     // Let extensions patch this code.
     $dummy = NULL;
     \CRM_Utils_Hook::singleton()->invoke(
-      ['override', 'code'], $this->originalPath, $code,
+      ['override', 'code'], $this->corePath, $code,
       $dummy, $dummy, $dummy, $dummy,
       'patchwork_apply_patch');
 

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<extension key="patchworktest" type="module">
+  <file>patchworktest</file>
+  <name>Patchwork Test</name>
+  <description>This should NOT be enabled on your site; it WILL break functionality if you do enable it! It is only used for running the phpunit tests of the patchwork extension in a test environment.</description>
+  <license>AGPL-3.0</license>
+  <maintainer>
+    <author>Rich Lott / Artful Robot</author>
+    <email>code.commits@artfulrobot.uk</email>
+  </maintainer>
+  <urls>
+    <url desc="Main Extension Page">https://github.com/artfulrobot/patchwork</url>
+    <url desc="Documentation">https://github.com/artfulrobot/patchwork</url>
+    <url desc="Support">https://github.com/artfulrobot/patchwork</url>
+    <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
+  </urls>
+  <releaseDate>2022-04-19</releaseDate>
+  <version>1.0</version>
+  <develStage>alpha</develStage>
+  <compatibility>
+    <ver>5.0</ver>
+  </compatibility>
+  <comments>This is only used by phpunit and should not be enabled on normal site.</comments>
+  <classloader>
+    <psr4 prefix="Civi\" path="Civi"/>
+  </classloader>
+  <civix>
+    <namespace>CRM/Patchworktest</namespace>
+  </civix>
+</extension>

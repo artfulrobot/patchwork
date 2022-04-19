@@ -16,13 +16,13 @@ class Patchwork {
   /**
    * @var Patchwork Holds singleton.
    */
-  protected Patchwork $singleton;
+  protected static Patchwork $singleton;
 
   /**
    * Main calling point; all exceptions logged as critical messages, but
    * execution will continue.
    */
-  public static function includeOnce(string $corePath) {
+  public function includeOnce(string $corePath) {
     try {
       // Check $corePath is ok and we have what we need to continue.
       $p = new Worker($corePath);
@@ -118,7 +118,7 @@ class Patchwork {
   public function deletePatch(string $corePath) {
     $patchesDir = $this->getPatchesDir();
 
-    $patchedPath = $patchesDir . '/' . sha1($corePath . CIVICRM_SITE_KEY) . '.php';
+    $patchedPath = $patchesDir . '/' . $this->getHashedFilename($corePath);
     if (file_exists($patchedPath)) {
       if (!unlink($patchedPath)) {
         throw new \RuntimeException("Patchwork Failed to delete old patched file at '$patchedPath' (from $corePath) - check permissions?");
@@ -178,5 +178,8 @@ class Patchwork {
         'fa-flag'
       );
     }
+  }
+  public function getHashedFilename(string $corePath) :string {
+    return sha1($corePath . CIVICRM_SITE_KEY) . '.php';
   }
 }
