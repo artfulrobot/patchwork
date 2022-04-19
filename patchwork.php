@@ -2,7 +2,6 @@
 
 require_once 'patchwork.civix.php';
 use CRM_Patchwork_ExtensionUtil as E;
-use Civi\Patchwork\Worker as Patchwork;
 
 /**
  * Implements hook_civicrm_config().
@@ -29,7 +28,7 @@ function patchwork_civicrm_xmlMenu(&$files) {
  */
 function patchwork_civicrm_install() {
   try {
-    \Civi\Patchwork\Worker::preparePatchworkDir();
+    \Civi\Patchwork::singleton()->prepareDir();
   }
   catch (Civi\Patchwork\PatchingFailedException $e) {
     Civi::log()->critical('While installing patchwork extension: ' . $e->getMessage() . ' Extension will not do anything until permissions are fixed.');
@@ -133,48 +132,7 @@ function patchwork_civicrm_entityTypes(&$entityTypes) {
  * Add a check to the status page/System.check results if $snafu is TRUE.
  */
 function patchwork_civicrm_check(&$messages) {
-  // Check the patchwork dir exists and is writeable.
-  try {
-    $patches_dir = Patchwork::preparePatchworkDir();
-  }
-  catch (Civi\Patchwork\PatchingFailedException $e) {
-    $messages[] = new CRM_Utils_Check_Message(
-      'patchwork_missing_patch_dir',
-      ts('The directory at %1 is missing and attempting to create it failed.', [1 => Patchwork::getPatchworkDir()]),
-      ts('Patchwork patches dir missing'),
-      \Psr\Log\LogLevel::ERROR,
-      'fa-flag'
-    );
-    return;
-  }
-  if (!is_writeable($patches_dir)) {
-    $messages[] = new CRM_Utils_Check_Message(
-      'patchwork_patch_dir_unwriteable',
-      ts('The directory at %1 is not writeable', [1 => $patches_dir]),
-      ts('Patchwork patches dir must be writeable.'),
-      \Psr\Log\LogLevel::ERROR,
-      'fa-flag'
-    );
-  }
-  // Now check all the files within it are writeable.
-  $dir = new DirectoryIterator($patches_dir);
-  $errors = [];
-  foreach ($dir as $fileinfo) {
-    if (!$fileinfo->isDot()) {
-      if (!is_writeable($patches_dir . '/' . $fileinfo->getFilename())) {
-        $errors[] = $fileinfo->getFilename();
-      }
-    }
-  }
-  if ($errors) {
-    $messages[] = new CRM_Utils_Check_Message(
-      'patchwork_patch_unwriteable_files',
-      ts('The files %1 are not writeable in %2', [2 => $patches_dir, 1 => implode(' ', $errors)]),
-      ts('Patchwork patched files are not writeable.'),
-      \Psr\Log\LogLevel::ERROR,
-      'fa-flag'
-    );
-  }
+  \Civi\Patchwork::singleton()->systemCheck($messages);
 }
 
 /**
@@ -186,6 +144,6 @@ function patchwork_civicrm_check(&$messages) {
  * @param string $override A path relative to the root dir of civicrm. e.g. /CRM/Core/Activity/BAO/Activity.php
  */
 function patchwork__patch_file($override) {
-  Civi\Patchwork\Worker::doInclude($override);
+  Civi\Patchwork::singleton()->includeOnce($override);
 }
 

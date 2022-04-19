@@ -2,6 +2,7 @@
 namespace Civi\Patchwork;
 
 use Civi;
+use Civi\Patchwork;
 
 /**
  * The main doing class.
@@ -36,53 +37,6 @@ class Worker {
    */
   protected $usePatch = '';
 
-  /**
-   * Main calling point; all exceptions logged as critical messages, but
-   * execution will continue.
-   */
-  public static function doInclude(string $corePath) {
-    try {
-      // Check $corePath is ok and we have what we need to continue.
-      $p = new static($corePath);
-      // Make patch as necessary
-      $this->ensurePatchApplied();
-      // If that worked, include the patched version.
-      include_once $p->getPatchedPath();
-    }
-    catch (CannotIncludeException $e) {
-      Civi::log()->critical("Patchwork CannotIncludeException, code may be missing ({$corePath}): " . $e->getMessage());
-    }
-    catch (PatchingFailedException $e) {
-      Civi::log()->critical("Patchwork PatchingFailedException, using original unpatched code ({$corePath}): " . $e->getMessage());
-      include_once $p->getOriginalPath();
-    }
-    catch (\Exception $e) {
-      Civi::log()->critical("Patchwork unhandled exception: " . get_class($e) . " ({$corePath}): " . $e->getMessage());
-      throw $e;
-    }
-  }
-
-  /**
-   * Prepare the directory for the patched files, return the path or throw a PatchingFailedException.
-   */
-  public static function preparePatchworkDir() :string {
-    // Need to create patches dir.
-    // Attempt, but don't abort (i.e. throw exception) if it fails.
-    $patchesDir = static::getPatchworkDir();
-    $outcome = \CRM_Utils_File::createDir($patchesDir, FALSE);
-    if ($outcome === FALSE) {
-      // Creation failed.
-      throw new PatchingFailedException("Patchwork failed to create/prepare the patches directory at '{$patchesDir}'");
-    }
-    // Otherwise (TRUE|NULL), it's fine.
-    return $patchesDir;
-  }
-  /**
-   * Returns the path to the patches dir.
-   */
-  public static function getPatchworkDir() :string {
-    return Civi::paths()->getPath('[civicrm.files]/patchwork/');
-  }
   /**
    * Sanity-check the input and calculate the required paths.
    *
@@ -144,35 +98,37 @@ class Worker {
   /**
    */
   public function createPatchedFile() :Worker {
+    $patchwork = Patchwork::singleton();
 
     $code = file_get_contents($this->originalPath);
     if (!$code) {
       throw new CannotIncludeException("Original file ({$this->originalPath}) has zero size/could not be loaded!");
     }
 
+    // Let extensions patch this code.
     $dummy = NULL;
-    CRM_Utils_Hook::singleton()->invoke(
+    \CRM_Utils_Hook::singleton()->invoke(
       ['override', 'code'], $this->originalPath, $code,
       $dummy, $dummy, $dummy, $dummy,
       'patchwork_apply_patch');
 
-    // Save the patched code and if that worked, we'll include that file.
     if (!$code) {
       throw new PatchingFailedException("After patching, code was empty.");
     }
 
-    static::preparePatchworkDir();
-
     // Prepend a comment to the code.
     $code = "<?php /** patchwork-patched version of {$this->corePath} */ ?>$code";
 
+    // Save the patched code
+    $patchwork->prepareDir();
     if (file_put_contents($this->patchedPath, $code)) {
-      $file_to_include = $patched_version;
-      Civi::log()->info("patchwork: successfully (re)patched $override", []);
+      Civi::log()->info("Patchwork: successfully (re)patched {$this->corePath} to {$this->patchedPath}");
     }
     else {
       throw new PatchingFailedException("Failed to write patch file at {$this->patchedPath}");
     }
+
+    return $this;
   }
 
   /**

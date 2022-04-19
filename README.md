@@ -29,11 +29,16 @@ whatever else you want to do.
 
 If you can't patch it you can either:
 
-- throw an exception
+- throw an exception. It is advised to throw one of:
 
-- set the `$code` to something falsy.
+   - `Civi\Patchwork\CannotIncludeException` if you would like the outcome to
+     be that no code (not even the original) gets used.
 
-In which case the original core file will be used (and an error logged).
+   - `Civi\Patchwork\PatchingFailedException` if you would like the outcome to
+     be that the original code gets used.
+
+- set the `$code` to something falsy in which case the original core file will
+  be used (and an error logged).
 
 ## Won't this slow my site down - all this patching?
 
@@ -47,8 +52,24 @@ gets recreated.
 
 ## How do I manually recreate my patched files?
 
-Just delete the files in `[civicrm.files]/patchwork/`
+The easiest way is to delete the patched file in question.
 
+-  Manually: Just delete the files in `[civicrm.files]/patchwork/`
+
+- Progammatically: call
+  `\Civi\Patchwork::deletePatch('/CRM/Mailing/MailStore.php')` which will delete
+  a patch for that core file. This can be useful in **extension Upgrader
+  classes** for example, to ensure your new patch logic is applied.
+
+- Progammatically: call `\Civi\Patchwork::deletePatches()` which will delete
+  *all* patches. This could feasibly be useful if you were worried about old
+  patch files kicking around; say a patched version of something that a
+  now-deleted/disabled extension created.
+
+Deleting patched files should be reasonably safe to do at any time; they will
+just get recreated on their next use. There is a slight timing risk if the
+deletion happens after one process created it and before it calls `include()`
+on it, but we're talking microseconds of risk here.
 
 ## Doesn't this leave the patched files vulnerable to download?
 
