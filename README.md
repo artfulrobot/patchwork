@@ -57,7 +57,7 @@ The easiest way is to delete the patched file in question.
 -  Manually: Just delete the files in `[civicrm.files]/patchwork/`
 
 - Progammatically: call
-  `\Civi\Patchwork::deletePatch('/CRM/Mailing/MailStore.php')` which will delete
+  `\Civi\Patchwork::singleton()->deletePatch('/CRM/Mailing/MailStore.php')` which will delete
   a patch for that core file. This can be useful in **extension Upgrader
   classes** for example, to ensure your new patch logic is applied.
 
